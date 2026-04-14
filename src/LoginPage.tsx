@@ -9,17 +9,28 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Ship, Lock, User as UserIcon, AlertCircle } from 'lucide-react';
+import { Ship, Lock, User as UserIcon, AlertCircle, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
+import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile';
 
 export default function LoginPage() {
   const { login } = useAuth();
   const [username, setUsername] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [isLoading, setIsLoading] = React.useState(false);
+  const [turnstileToken, setTurnstileToken] = React.useState<string | null>(null);
+  const turnstileRef = React.useRef<TurnstileInstance>(null);
+
+  const siteKey = (import.meta as any).env.VITE_TURNSTILE_SITE_KEY || '1x00000000000000000000AA'; // Testing key
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!turnstileToken) {
+      toast.error('Please complete the security check');
+      return;
+    }
+
     setIsLoading(true);
     
     try {
@@ -82,17 +93,21 @@ export default function LoginPage() {
               </div>
             </div>
             
-            <div className="bg-muted/50 p-3 rounded-lg text-[10px] text-muted-foreground space-y-1 border border-border">
-              <p className="font-semibold flex items-center gap-1">
-                <AlertCircle className="w-3 h-3" /> Demo Credentials:
-              </p>
-              <div className="grid grid-cols-2 gap-x-4">
-                <span>owner / owner123</span>
-                <span>manager / manager123</span>
-                <span>repair / repair123</span>
-                <span>billing / billing123</span>
-                <span>staff / staff123</span>
-              </div>
+            <div className="flex justify-center py-2">
+              <Turnstile
+                ref={turnstileRef}
+                siteKey={siteKey}
+                onSuccess={(token) => setTurnstileToken(token)}
+                onExpire={() => setTurnstileToken(null)}
+                onError={() => {
+                  setTurnstileToken(null);
+                  toast.error('Security check failed. Please refresh.');
+                }}
+                options={{
+                  theme: 'light',
+                  size: 'normal',
+                }}
+              />
             </div>
           </CardContent>
           <CardFooter>

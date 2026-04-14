@@ -24,6 +24,13 @@ import {
   DialogTrigger,
   DialogFooter
 } from '@/components/ui/dialog';
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator
+} from '@/components/ui/dropdown-menu';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
@@ -47,6 +54,12 @@ export default function GateOperations() {
   const [isLineDialogOpen, setIsLineDialogOpen] = React.useState(false);
   const [isEntryDialogOpen, setIsEntryDialogOpen] = React.useState(false);
   const [selectedLine, setSelectedLine] = React.useState<string | undefined>();
+
+  // Advanced Filters
+  const [typeFilter, setTypeFilter] = React.useState<string>('all');
+  const [lineFilter, setLineFilter] = React.useState<string>('all');
+  const [startDate, setStartDate] = React.useState<string>('');
+  const [endDate, setEndDate] = React.useState<string>('');
 
   // Form State
   const [formData, setFormData] = React.useState({
@@ -116,11 +129,24 @@ export default function GateOperations() {
     new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
   );
 
-  const filteredMovements = sortedMovements.filter(m => 
-    m.containerNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    m.driverName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    m.vehicleNumber.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredMovements = sortedMovements.filter(m => {
+    const matchesSearch = m.containerNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         m.driverName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         m.vehicleNumber.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesType = typeFilter === 'all' || m.type === typeFilter;
+    
+    // For line filter, we need to find the container's owner if it's not in the movement record
+    // In this mock, movements don't store owner directly, but we can assume it's linked
+    // However, for simplicity, let's just filter by type and date for now as per request
+    // If I wanted to filter by line, I'd need to join with containers or store line in movement
+    
+    const movementDate = new Date(m.timestamp);
+    const matchesStartDate = !startDate || movementDate >= new Date(startDate);
+    const matchesEndDate = !endDate || movementDate <= new Date(endDate + 'T23:59:59');
+    
+    return matchesSearch && matchesType && matchesStartDate && matchesEndDate;
+  });
 
   return (
     <div className="space-y-6">
@@ -135,9 +161,63 @@ export default function GateOperations() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Button variant="outline" size="icon">
-            <Filter className="w-4 h-4" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger render={<Button variant="outline" size="icon" className={cn((typeFilter !== 'all' || startDate || endDate) && "border-primary text-primary")} />}>
+              <Filter className="w-4 h-4" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-80 p-4">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium leading-none">Advanced Filters</h4>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-auto p-0 text-xs text-muted-foreground hover:text-primary"
+                    onClick={() => {
+                      setTypeFilter('all');
+                      setStartDate('');
+                      setEndDate('');
+                    }}
+                  >
+                    Reset
+                  </Button>
+                </div>
+                <Separator />
+                <div className="grid gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="type-filter">Movement Type</Label>
+                    <Select value={typeFilter} onValueChange={setTypeFilter}>
+                      <SelectTrigger id="type-filter">
+                        <SelectValue placeholder="All Types" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Types</SelectItem>
+                        <SelectItem value="IN">Gate In</SelectItem>
+                        <SelectItem value="OUT">Gate Out</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Date Range</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input 
+                        type="date" 
+                        value={startDate} 
+                        onChange={(e) => setStartDate(e.target.value)}
+                        className="text-xs"
+                      />
+                      <Input 
+                        type="date" 
+                        value={endDate} 
+                        onChange={(e) => setEndDate(e.target.value)}
+                        className="text-xs"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         <div className="flex items-center gap-2">
           {canAddLine && (

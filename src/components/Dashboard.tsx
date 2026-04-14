@@ -28,7 +28,8 @@ import {
   Activity,
   ArrowDownLeft,
   FileSpreadsheet,
-  Download
+  Download,
+  AlertCircle
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -123,6 +124,7 @@ export default function Dashboard() {
   };
 
   const totalContainers = containers.length;
+  const damagedContainers = containers.filter(c => c.status === 'Damaged').length;
   const gateInsToday = movements.filter(m => m.type === 'IN' && new Date(m.timestamp).toDateString() === new Date().toDateString()).length;
   const gateOutsToday = movements.filter(m => m.type === 'OUT' && new Date(m.timestamp).toDateString() === new Date().toDateString()).length;
 
@@ -131,7 +133,10 @@ export default function Dashboard() {
     return acc;
   }, {});
 
-  const pieData = Object.entries(typeDistribution).map(([name, value]) => ({ name, value: value as number }));
+  const pieData = [
+    ...Object.entries(typeDistribution).map(([name, value]) => ({ name, value: value as number })),
+    { name: 'Damaged', value: damagedContainers }
+  ];
 
   const recentMovements = [...movements]
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
@@ -192,10 +197,11 @@ export default function Dashboard() {
           trend={{ value: "5%", positive: false }}
         />
         <StatCard 
-          title="Active Repairs" 
-          value={mockStats.repairsInProgress} 
-          icon={Wrench}
-          description="5 pending approval"
+          title="Damaged Units" 
+          value={damagedContainers} 
+          icon={AlertCircle}
+          description={`${damagedContainers} containers need repair`}
+          trend={{ value: `${Math.round((damagedContainers / totalContainers) * 100)}%`, positive: false }}
         />
       </div>
 

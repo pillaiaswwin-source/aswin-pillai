@@ -32,7 +32,8 @@ import {
   LayoutGrid,
   List,
   ArrowUpDown,
-  ChevronRight
+  ChevronRight,
+  AlertCircle
 } from 'lucide-react';
 import { 
   Table, 
@@ -66,6 +67,12 @@ import {
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { 
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Container, ContainerSize, ContainerType, ConditionGrade } from '@/src/types';
 import ShippingLineDialog from './ShippingLineDialog';
 import BulkChangeLineDialog from './BulkChangeLineDialog';
@@ -96,6 +103,12 @@ export default function Inventory() {
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = React.useState('all');
   const [sortBy, setSortBy] = React.useState<'date' | 'number' | 'dwell'>('date');
+
+  // Advanced Filters
+  const [statusFilter, setStatusFilter] = React.useState<string>('all');
+  const [gradeFilter, setGradeFilter] = React.useState<string>('all');
+  const [startDate, setStartDate] = React.useState<string>('');
+  const [endDate, setEndDate] = React.useState<string>('');
 
   // Add Form State
   const [formData, setFormData] = React.useState({
@@ -162,10 +175,19 @@ export default function Inventory() {
     });
   }, [containers, sortBy]);
 
-  const filteredContainers = sortedContainers.filter(c => 
-    c.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.owner.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredContainers = sortedContainers.filter(c => {
+    const matchesSearch = c.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         c.owner.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = statusFilter === 'all' || c.status === statusFilter;
+    const matchesGrade = gradeFilter === 'all' || c.grade === gradeFilter;
+    
+    const arrivalDate = new Date(c.arrivalDate);
+    const matchesStartDate = !startDate || arrivalDate >= new Date(startDate);
+    const matchesEndDate = !endDate || arrivalDate <= new Date(endDate + 'T23:59:59');
+    
+    return matchesSearch && matchesStatus && matchesGrade && matchesStartDate && matchesEndDate;
+  });
 
   const groupedContainers = React.useMemo(() => {
     const groups: Record<string, Container[]> = { all: filteredContainers };
@@ -303,9 +325,31 @@ export default function Inventory() {
                   </div>
                 </TableCell>
                 <TableCell>
-                  <Badge variant="outline" className={cn("font-medium", getStatusColor(c.status))}>
-                    {c.status}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className={cn("font-medium", getStatusColor(c.status))}>
+                      {c.status}
+                    </Badge>
+                    {c.status === 'Damaged' && c.damageDescription && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger render={<div className="cursor-help text-red-500 hover:text-red-600 transition-colors" />}>
+                            <AlertCircle className="w-4 h-4" />
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-[250px] p-3">
+                            <div className="space-y-2">
+                              <p className="font-bold text-xs uppercase tracking-wider">Damage Report</p>
+                              <p className="text-xs leading-relaxed">{c.damageDescription}</p>
+                              {c.damageImage && (
+                                <div className="mt-2 rounded-md overflow-hidden border">
+                                  <img src={c.damageImage} alt="Damage" className="w-full h-auto" referrerPolicy="no-referrer" />
+                                </div>
+                              )}
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell>
                   <Badge variant="secondary" className="font-mono">
@@ -327,10 +371,8 @@ export default function Inventory() {
                 </TableCell>
                 <TableCell className="text-right">
                   <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <MoreVertical className="w-4 h-4" />
-                      </Button>
+                    <DropdownMenuTrigger render={<Button variant="ghost" size="icon" />}>
+                      <MoreVertical className="w-4 h-4" />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem>
@@ -450,9 +492,82 @@ export default function Inventory() {
                 <SelectItem value="dwell">Dwell Time</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline" size="icon" className="bg-muted/30">
-              <Filter className="w-4 h-4" />
-            </Button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger render={<Button variant="outline" size="icon" className={cn("bg-muted/30", (statusFilter !== 'all' || gradeFilter !== 'all' || startDate || endDate) && "border-primary text-primary")} />}>
+                <Filter className="w-4 h-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-80 p-4">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-medium leading-none">Advanced Filters</h4>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-auto p-0 text-xs text-muted-foreground hover:text-primary"
+                      onClick={() => {
+                        setStatusFilter('all');
+                        setGradeFilter('all');
+                        setStartDate('');
+                        setEndDate('');
+                      }}
+                    >
+                      Reset
+                    </Button>
+                  </div>
+                  <Separator />
+                  <div className="grid gap-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="status-filter">Status</Label>
+                      <Select value={statusFilter} onValueChange={setStatusFilter}>
+                        <SelectTrigger id="status-filter">
+                          <SelectValue placeholder="All Statuses" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Statuses</SelectItem>
+                          <SelectItem value="Available">Available</SelectItem>
+                          <SelectItem value="Full">Full</SelectItem>
+                          <SelectItem value="Damaged">Damaged</SelectItem>
+                          <SelectItem value="Under Repair">Under Repair</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="grade-filter">Grade</Label>
+                      <Select value={gradeFilter} onValueChange={setGradeFilter}>
+                        <SelectTrigger id="grade-filter">
+                          <SelectValue placeholder="All Grades" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Grades</SelectItem>
+                          <SelectItem value="A">Grade A</SelectItem>
+                          <SelectItem value="B">Grade B</SelectItem>
+                          <SelectItem value="C">Grade C</SelectItem>
+                          <SelectItem value="D">Grade D</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label>Arrival Date Range</Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Input 
+                          type="date" 
+                          value={startDate} 
+                          onChange={(e) => setStartDate(e.target.value)}
+                          className="text-xs"
+                        />
+                        <Input 
+                          type="date" 
+                          value={endDate} 
+                          onChange={(e) => setEndDate(e.target.value)}
+                          className="text-xs"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
@@ -475,8 +590,8 @@ export default function Inventory() {
           </Button>
           {canManage && (
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" className="whitespace-nowrap">Add Container</Button>
+              <DialogTrigger render={<Button size="sm" className="whitespace-nowrap" />}>
+                Add Container
               </DialogTrigger>
               <DialogContent className="sm:max-w-[500px]">
                 <form onSubmit={handleAddSubmit}>

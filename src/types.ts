@@ -45,6 +45,8 @@ export interface Container {
   fromLocation?: string;
   vesselVoyage?: string;
   remarks?: string;
+  damageDescription?: string;
+  damageImage?: string;
 }
 
 export interface GateMovement {

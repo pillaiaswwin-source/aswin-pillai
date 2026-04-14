@@ -366,11 +366,9 @@ export default function Settings() {
                     setUserFormData({ username: '', name: '', email: '', role: 'STAFF', password: '' });
                   }
                 }}>
-                  <DialogTrigger asChild>
-                    <Button size="sm" className="gap-2">
-                      <Plus className="w-4 h-4" /> Add User
-                    </Button>
-                  </DialogTrigger>
+                <DialogTrigger render={<Button size="sm" className="gap-2" />}>
+                  <Plus className="w-4 h-4" /> Add User
+                </DialogTrigger>
                   <DialogContent>
                     <form onSubmit={handleUserSubmit}>
                       <DialogHeader>
@@ -491,19 +489,19 @@ export default function Settings() {
                                 setNewResetPassword('');
                               }
                             }}>
-                              <DialogTrigger asChild>
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
-                                  className="h-8 w-8 text-amber-500 hover:text-amber-600"
-                                  onClick={() => {
-                                    setResettingUser(u);
-                                    setIsResetDialogOpen(true);
-                                  }}
-                                >
-                                  <Key className="w-3.5 h-3.5" />
-                                </Button>
-                              </DialogTrigger>
+                            <DialogTrigger render={
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-8 w-8 text-amber-500 hover:text-amber-600"
+                                onClick={() => {
+                                  setResettingUser(u);
+                                  setIsResetDialogOpen(true);
+                                }}
+                              />
+                            }>
+                              <Key className="w-3.5 h-3.5" />
+                            </DialogTrigger>
                               <DialogContent>
                                 <form onSubmit={handleResetPassword}>
                                   <DialogHeader>

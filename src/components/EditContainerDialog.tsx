@@ -21,6 +21,9 @@ import { useContainers } from '@/src/ContainerContext';
 import { toast } from 'sonner';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Camera, Image as ImageIcon, AlertCircle } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Textarea } from '@/components/ui/textarea';
 
 interface EditContainerDialogProps {
   container: Container | null;
@@ -31,6 +34,7 @@ interface EditContainerDialogProps {
 export default function EditContainerDialog({ container, open, onOpenChange }: EditContainerDialogProps) {
   const { updateContainer, shippingLines } = useContainers();
   const [formData, setFormData] = React.useState<Container | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
     if (container) {
@@ -39,6 +43,17 @@ export default function EditContainerDialog({ container, open, onOpenChange }: E
   }, [container]);
 
   if (!formData) return null;
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData({ ...formData, damageImage: reader.result as string });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -167,6 +182,74 @@ export default function EditContainerDialog({ container, open, onOpenChange }: E
                   </div>
                 </div>
               </div>
+
+              {formData.status === 'Damaged' && (
+                <>
+                  <Separator />
+                  <div 
+                    className="space-y-4 p-4 rounded-lg bg-red-500/5 border border-red-500/10"
+                  >
+                    <div className="flex items-center gap-2 text-red-600">
+                      <AlertCircle className="w-4 h-4" />
+                      <h4 className="text-sm font-bold uppercase tracking-wider">Damage Report</h4>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="damage-desc">Damage Description</Label>
+                      <Textarea 
+                        id="damage-desc"
+                        placeholder="Describe the damage in detail..."
+                        value={formData.damageDescription || ''}
+                        onChange={(e) => setFormData({...formData, damageDescription: e.target.value})}
+                        className="bg-background"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Damage Photos (Optional)</Label>
+                      <div className="flex flex-wrap gap-4">
+                        {formData.damageImage ? (
+                          <div className="relative group w-32 h-32 rounded-lg overflow-hidden border">
+                            <img 
+                              src={formData.damageImage} 
+                              alt="Damage" 
+                              className="w-full h-full object-cover"
+                              referrerPolicy="no-referrer"
+                            />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                              <Button 
+                                type="button" 
+                                variant="destructive" 
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => setFormData({...formData, damageImage: undefined})}
+                              >
+                                <AlertCircle className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="w-32 h-32 rounded-lg border-2 border-dashed border-muted-foreground/20 hover:border-primary/50 hover:bg-primary/5 transition-all flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-primary"
+                          >
+                            <Camera className="w-6 h-6" />
+                            <span className="text-[10px] font-medium">Upload Photo</span>
+                          </button>
+                        )}
+                        <input 
+                          type="file" 
+                          ref={fileInputRef}
+                          className="hidden" 
+                          accept="image/*"
+                          onChange={handleImageUpload}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
 
               <Separator />
 
